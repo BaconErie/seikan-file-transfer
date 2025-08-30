@@ -3,6 +3,7 @@ import seikanLogo from "./assets/seikan.svg";
 import seikanOnlyLogo from "./assets/seikan-only.svg";
 import seikanTextLogo from "./assets/seikan-text.svg";
 import "./App.css";
+import { io } from "socket.io-client";
 
 const ACCPETED_VERSION = "1";
 
@@ -118,11 +119,24 @@ function StartMenu({
 function WaitingMenuA({
   serverHost,
   setIsChangeServerHostVisible,
+  setSocket,
 }: {
   serverHost: string;
   setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  socket: any;
+  setSocket: React.Dispatch<React.SetStateAction<any>>;
 }) {
   const linkRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const socket = io();
+
+    setSocket(socket);
+
+    socket.on("connect", () => {
+      console.log("connected.");
+    });
+  }, []);
 
   function copyLink() {
     let copyText = linkRef.current;
@@ -227,7 +241,13 @@ function VerifyMenu() {
   );
 }
 
-function SendMenu({ serverHost }: { serverHost: string }) {
+function SendMenu({
+  serverHost,
+  setIsChangeServerHostVisible,
+}: {
+  serverHost: string;
+  setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   return (
     <div className="rounded-lg border-4 border-[#ffffff70] bg-[#ffffff30] h-9/10 aspect-1/1 p-5 flex flex-col">
       <div className="flex justify-between items-center">
@@ -247,6 +267,11 @@ function SendMenu({ serverHost }: { serverHost: string }) {
       <div className="flex pt-10 justify-center h-full flex-col gap-4 text-2xl">
         <h1>Connected! Attach files to send.</h1>
       </div>
+
+      <UsingServerNotice
+        serverHost={serverHost}
+        setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+      />
     </div>
   );
 }
@@ -260,6 +285,8 @@ function App() {
     useState<boolean>(false);
 
   const [serverHost, setServerHost] = useState(window.location.host);
+
+  const [socket, setSocket] = useState<any>(null);
 
   useEffect(() => {
     const effectMain = async () => {
@@ -312,11 +339,20 @@ function App() {
           <WaitingMenuA
             serverHost={serverHost}
             setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+            socket={socket}
+            setSocket={setSocket}
           />
         )}
 
         {currentMenu === "waiting-b" && (
           <WaitingMenuB
+            serverHost={serverHost}
+            setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+          />
+        )}
+
+        {currentMenu === "send" && (
+          <SendMenu
             serverHost={serverHost}
             setIsChangeServerHostVisible={setIsChangeServerHostVisible}
           />
