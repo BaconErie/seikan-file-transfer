@@ -91,9 +91,7 @@ function StartMenu({
   setCurrentMenu: (
     menu: "start" | "waiting-a" | "waiting-b" | "verifying" | "send"
   ) => void;
-
   serverHost: string;
-
   setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   return (
@@ -120,11 +118,15 @@ function WaitingMenuA({
   serverHost,
   setIsChangeServerHostVisible,
   setSocket,
+  tunnelId,
+  setTunnelId,
 }: {
   serverHost: string;
   setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
   socket: any;
   setSocket: React.Dispatch<React.SetStateAction<any>>;
+  tunnelId: string;
+  setTunnelId: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const linkRef = useRef<HTMLInputElement>(null);
 
@@ -139,6 +141,13 @@ function WaitingMenuA({
     socket.on("connect", () => {
       console.log("Connected.");
     });
+
+    socket.on("tunnel-id", (data) => {
+      console.log(`Connected to tunnel with id ${data.tunnelId}`);
+      setTunnelId(data.tunnelId);
+    });
+
+    socket.emit("new");
   }, []);
 
   function copyLink() {
@@ -172,7 +181,11 @@ function WaitingMenuA({
         <input
           ref={linkRef}
           type={"text"}
-          value={`http://${serverHost}/?tunnel-id=123-456-789`}
+          value={
+            tunnelId != undefined && tunnelId.length == 0
+              ? "Getting a link..."
+              : `http://${serverHost}/?tunnel-id=${tunnelId}`
+          }
           readOnly
         />
         <button onClick={copyLink}>Click here to copy link</button>
@@ -288,8 +301,8 @@ function App() {
     useState<boolean>(false);
 
   const [serverHost, setServerHost] = useState(window.location.host);
-
   const [socket, setSocket] = useState<any>(null);
+  const [tunneId, setTunnelId] = useState<string>("");
 
   useEffect(() => {
     const effectMain = async () => {
@@ -344,6 +357,8 @@ function App() {
             setIsChangeServerHostVisible={setIsChangeServerHostVisible}
             socket={socket}
             setSocket={setSocket}
+            tunnelId={tunneId}
+            setTunnelId={setTunnelId}
           />
         )}
 
