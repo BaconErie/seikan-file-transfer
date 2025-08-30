@@ -338,6 +338,7 @@ function App() {
             if (text == undefined) return;
             setServerHost(text);
             setIsChangeServerHostVisible(false);
+            localStorage.setItem("serverHost", text);
           }}
         />
       )}
