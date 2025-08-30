@@ -15,7 +15,7 @@ async function checkForSeikanServer(host: string) {
 
       if (
         result &&
-        result.version.substring(result.version.indexOf(".")) ===
+        result.version.substring(0, result.version.indexOf(".")) ===
           ACCPETED_VERSION
       ) {
         return true;
