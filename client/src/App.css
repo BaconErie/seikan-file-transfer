@@ -8,6 +8,12 @@ body {
   background-color: #587d40;
 }
 
+a {
+  color: #002a5e;
+  text-decoration-line: underline;
+  cursor: pointer;
+}
+
 h1 {
   font-size: 3rem;
   font-weight: bold;
