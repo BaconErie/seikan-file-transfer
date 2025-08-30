@@ -1,5 +1,5 @@
 import http from "http";
-import socketIo from "socket.io";
+import { Server } from "socket.io";
 
 var waitingTunnels = {};
 var tunnelToSocket = {};
@@ -17,14 +17,26 @@ function generateId() {
 
 const server = http.createServer((req, res) => {
   if (req.url === "/seikan-api") {
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    });
     res.end(JSON.stringify({ version: "1.0.0" }));
+  } else {
+    res.end();
   }
 });
 
-const io = socketIo.Server(server);
+const io = new Server(server, {
+  path: "/seikan-api/",
+  cors: {
+    origin: "*",
+  },
+});
 
 io.on("connection", (socket) => {
+  console.log("New connection.");
+
   socket.on("new", () => {
     // Handle new tunnel creation
     // Generate a unique ID for the tunnel
@@ -56,6 +68,8 @@ io.on("connection", (socket) => {
 
         socket.disconnect(true);
       }
+
+      console.log("Socket disconnected.");
     });
 
     // Send the tunnel ID to the client
@@ -151,4 +165,8 @@ io.on("connection", (socket) => {
 
     otherTunnel.emit("data", { chunk: data.chunk });
   });
+});
+
+server.listen(9087, () => {
+  console.log(`Server running at http://localhost:9087/`);
 });
