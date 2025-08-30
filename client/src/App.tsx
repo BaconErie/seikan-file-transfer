@@ -1,8 +1,33 @@
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import seikanLogo from "./assets/seikan.svg";
 import seikanOnlyLogo from "./assets/seikan-only.svg";
 import seikanTextLogo from "./assets/seikan-text.svg";
 import "./App.css";
+
+const ACCPETED_VERSION = "1";
+
+async function checkForSeikanServer(host: string) {
+  try {
+    let res = await fetch(`http://${host}/seikan-api`, { method: "GET" });
+    if (res.status === 200) {
+      const result = await res.json();
+
+      if (
+        result &&
+        result.version.substring(result.version.indexOf(".")) ===
+          ACCPETED_VERSION
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  } catch (e) {
+    return false;
+  }
+}
 
 function UsingServerNotice({ serverHost }: { serverHost: string }) {
   return (
@@ -176,6 +201,24 @@ function App() {
   >("start");
 
   const [serverHost, setServerHost] = useState(window.location.host);
+
+  useEffect(() => {
+    const effectMain = async () => {
+      let savedServerHost = localStorage.getItem("serverHost");
+      if (savedServerHost && (await checkForSeikanServer(savedServerHost))) {
+        setServerHost(savedServerHost);
+      } else if (
+        (await checkForSeikanServer(window.location.host)) ||
+        true //TODO: remove "|| true"
+      ) {
+        setServerHost(window.location.host);
+      } else if (await checkForSeikanServer("seikan.baconerie.com")) {
+        setServerHost("seikan.baconerie.com");
+      }
+    };
+
+    effectMain();
+  }, []);
 
   useLayoutEffect(() => {
     let params = new URLSearchParams(document.location.search);
