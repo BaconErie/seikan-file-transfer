@@ -1,4 +1,5 @@
 - Delete debug console prints
+- Make font Open Sans
 
 - Seikan server allow port to change
 - Thru a settings.json
