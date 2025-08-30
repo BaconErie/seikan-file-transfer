@@ -184,7 +184,7 @@ function WaitingMenuA({
           value={
             tunnelId != undefined && tunnelId.length == 0
               ? "Getting a link..."
-              : `http://${serverHost}/?tunnel-id=${tunnelId}`
+              : `http://${window.location.host}/?tunnel-id=${tunnelId}`
           }
           readOnly
         />
