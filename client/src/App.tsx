@@ -129,12 +129,15 @@ function WaitingMenuA({
   const linkRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const socket = io();
+    const socket = io(serverHost, {
+      path: "/seikan-api/",
+      reconnection: false,
+    });
 
     setSocket(socket);
 
     socket.on("connect", () => {
-      console.log("connected.");
+      console.log("Connected.");
     });
   }, []);
 
