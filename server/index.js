@@ -52,6 +52,7 @@ io.on("connection", (socket) => {
     }
 
     waitingTunnels[tunnelId] = socket;
+    socketToTunnel[socket] = tunnelId;
 
     socket.on("disconnect", () => {
       if (socket in socketToTunnel) {
@@ -76,10 +77,19 @@ io.on("connection", (socket) => {
       }
 
       console.log("Socket disconnected.");
+      console.log(
+        "DEBUG. Socket disconnected. waitingTunnels length is now " +
+          Object.keys(waitingTunnels).length
+      );
     });
 
     // Send the tunnel ID to the client
     socket.emit("tunnel-id", { tunnelId: tunnelId });
+
+    console.log(
+      "DEBUG. New tunnel created. waitingTunnels is now " +
+        Object.keys(waitingTunnels).length
+    );
   });
 
   socket.on("connect", async (data) => {
