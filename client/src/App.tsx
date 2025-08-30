@@ -29,7 +29,40 @@ async function checkForSeikanServer(host: string) {
   }
 }
 
-function UsingServerNotice({ serverHost }: { serverHost: string }) {
+function Modal({
+  message,
+  callback,
+}: {
+  message: string;
+  callback: (inputContents: string | undefined) => any;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="w-screen h-screen z-10 fixed bg-[#ffffff60] flex justify-center items-center">
+      <div className="rounded-lg border-4 border-[#ffffff70] bg-[#587d40] p-5 flex flex-col gap-4">
+        <p className="text-2xl">{message}</p>
+        <input type={"text"} ref={input}></input>
+        <button
+          className="text-2xl"
+          onClick={() => {
+            callback(input.current?.value);
+          }}
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function UsingServerNotice({
+  serverHost,
+  setIsChangeServerHostVisible,
+}: {
+  serverHost: string;
+  setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   return (
     <p className="text-sm">
       Using server{" "}
@@ -40,7 +73,7 @@ function UsingServerNotice({ serverHost }: { serverHost: string }) {
       <a
         className="text-base"
         onClick={() => {
-          alert("Not implemented");
+          setIsChangeServerHostVisible(true);
         }}
       >
         Change server
@@ -52,12 +85,15 @@ function UsingServerNotice({ serverHost }: { serverHost: string }) {
 function StartMenu({
   setCurrentMenu,
   serverHost,
+  setIsChangeServerHostVisible,
 }: {
   setCurrentMenu: (
     menu: "start" | "waiting-a" | "waiting-b" | "verifying" | "send"
   ) => void;
 
   serverHost: string;
+
+  setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   return (
     <div className="rounded-lg border-4 border-[#ffffff70] bg-[#ffffff30] h-9/10 aspect-1/1 p-10 flex flex-col items-center justify-center gap-4">
@@ -71,12 +107,21 @@ function StartMenu({
         Send files
       </button>
 
-      <UsingServerNotice serverHost={serverHost} />
+      <UsingServerNotice
+        serverHost={serverHost}
+        setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+      />
     </div>
   );
 }
 
-function WaitingMenuA({ serverHost }: { serverHost: string }) {
+function WaitingMenuA({
+  serverHost,
+  setIsChangeServerHostVisible,
+}: {
+  serverHost: string;
+  setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   const linkRef = useRef<HTMLInputElement>(null);
 
   function copyLink() {
@@ -112,18 +157,26 @@ function WaitingMenuA({ serverHost }: { serverHost: string }) {
           type={"text"}
           value={`http://${serverHost}/?tunnel-id=123-456-789`}
           readOnly
-          className="bg-transparent border-2 border-white p-2 text-2xl w-full"
         />
         <button onClick={copyLink}>Click here to copy link</button>
 
         <p>Waiting for the other device...</p>
-        <UsingServerNotice serverHost={serverHost} />
+        <UsingServerNotice
+          serverHost={serverHost}
+          setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+        />
       </div>
     </div>
   );
 }
 
-function WaitingMenuB({ serverHost }: { serverHost: string }) {
+function WaitingMenuB({
+  serverHost,
+  setIsChangeServerHostVisible,
+}: {
+  serverHost: string;
+  setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   return (
     <div className="rounded-lg border-4 border-[#ffffff70] bg-[#ffffff30] h-9/10 aspect-1/1 p-5 flex flex-col">
       <div className="flex justify-between items-center">
@@ -141,13 +194,16 @@ function WaitingMenuB({ serverHost }: { serverHost: string }) {
       </div>
       <div className="flex pt-10 justify-center h-full flex-col gap-4 text-2xl">
         <h1>Connecting to the other device...</h1>
-        <UsingServerNotice serverHost={serverHost} />
+        <UsingServerNotice
+          serverHost={serverHost}
+          setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+        />
       </div>
     </div>
   );
 }
 
-function VerifyMenu({ serverHost }: { serverHost: string }) {
+function VerifyMenu() {
   return (
     <div className="rounded-lg border-4 border-[#ffffff70] bg-[#ffffff30] h-9/10 aspect-1/1 p-5 flex flex-col">
       <div className="flex justify-between items-center">
@@ -200,6 +256,9 @@ function App() {
     "start" | "waiting-a" | "waiting-b" | "verifying" | "send"
   >("start");
 
+  const [isChangeServerHostVisible, setIsChangeServerHostVisible] =
+    useState<boolean>(false);
+
   const [serverHost, setServerHost] = useState(window.location.host);
 
   useEffect(() => {
@@ -227,37 +286,46 @@ function App() {
     }
   }, []);
 
-  if (currentMenu === "start") {
-    return (
+  return (
+    <>
+      {isChangeServerHostVisible && (
+        <Modal
+          message={"Enter a server domain."}
+          callback={(text) => {
+            if (text == undefined) return;
+            setServerHost(text);
+            setIsChangeServerHostVisible(false);
+          }}
+        />
+      )}
+
       <div className="w-screen h-screen flex items-center justify-center">
-        <StartMenu setCurrentMenu={setCurrentMenu} serverHost={serverHost} />
+        {currentMenu === "start" && (
+          <StartMenu
+            setCurrentMenu={setCurrentMenu}
+            serverHost={serverHost}
+            setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+          />
+        )}
+
+        {currentMenu === "waiting-a" && (
+          <WaitingMenuA
+            serverHost={serverHost}
+            setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+          />
+        )}
+
+        {currentMenu === "waiting-b" && (
+          <WaitingMenuB
+            serverHost={serverHost}
+            setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+          />
+        )}
+
+        {currentMenu === "verifying" && <VerifyMenu />}
       </div>
-    );
-  } else if (currentMenu === "waiting-a") {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center">
-        <WaitingMenuA serverHost={serverHost} />
-      </div>
-    );
-  } else if (currentMenu === "waiting-b") {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center">
-        <WaitingMenuB serverHost={serverHost} />
-      </div>
-    );
-  } else if (currentMenu === "verifying") {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center">
-        <VerifyMenu serverHost={serverHost} />
-      </div>
-    );
-  } else {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center">
-        <SendMenu serverHost={serverHost} />
-      </div>
-    );
-  }
+    </>
+  );
 }
 
 export default App;
