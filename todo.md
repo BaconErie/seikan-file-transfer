@@ -1,3 +1,5 @@
+- Delete debug console prints
+
 - Seikan server allow port to change
 - Thru a settings.json
 - Instead of changing the server and always connected to `/seikan-api`, instead
@@ -9,3 +11,5 @@
 - As for the link, domain should always be the same. Then, add a url param that
   sets the socket connect endpoint, if it is not the same domain and or
   /seikan-api
+- Automatically clear out inactive tunnels
+- Limit how many tunnels at once, set in settings
