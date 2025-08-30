@@ -8,9 +8,15 @@ var totalSent = {};
 var tunnelStatus = {};
 
 function generateId() {
-  let a = (Math.random() * 1_000_000_000).toString();
-  let b = (Math.random() * 1_000_000_000).toString();
-  let c = (Math.random() * 1_000_000_000).toString();
+  let a = Math.floor(Math.random() * 100)
+    .toString()
+    .padStart(3, "0");
+  let b = Math.floor(Math.random() * 100)
+    .toString()
+    .padStart(3, "0");
+  let c = Math.floor(Math.random() * 100)
+    .toString()
+    .padStart(3, "0");
 
   return `${a}-${b}-${c}`;
 }
