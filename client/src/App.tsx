@@ -184,7 +184,10 @@ function WaitingMenuA({
           value={
             tunnelId != undefined && tunnelId.length == 0
               ? "Getting a link..."
-              : `http://${window.location.host}/?tunnel-id=${tunnelId}`
+              : `http://${window.location.host}/?tunnel-id=${tunnelId}` +
+                (serverHost != document.location.host
+                  ? `&serverHost=${serverHost}`
+                  : "") // Only add server param if it's different from the current host
           }
           readOnly
         />
