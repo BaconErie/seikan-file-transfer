@@ -311,7 +311,7 @@ function App() {
   const [tunneId, setTunnelId] = useState<string>("");
 
   useEffect(() => {
-    const effectMain = async () => {
+    const automaticSetServerHost = async () => {
       let savedServerHost = localStorage.getItem("serverHost");
       if (savedServerHost && (await checkForSeikanServer(savedServerHost))) {
         setServerHost(savedServerHost);
@@ -325,13 +325,20 @@ function App() {
       }
     };
 
-    effectMain();
-  }, []);
-
-  useLayoutEffect(() => {
     let params = new URLSearchParams(document.location.search);
-    if (params.get("tunnel-id")) {
+    const tunnelId = params.get("tunnel-id");
+    if (tunnelId) {
+      setTunnelId(tunnelId as string);
       setCurrentMenu("waiting-b");
+
+      const requestedServerHost = params.get("serverHost");
+      if (requestedServerHost) {
+        setServerHost(requestedServerHost);
+      } else {
+        setServerHost(window.location.host);
+      }
+    } else {
+      automaticSetServerHost();
     }
   }, []);
 
