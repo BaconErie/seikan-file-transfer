@@ -71,14 +71,16 @@ function UsingServerNotice({
         {serverHost}
       </span>
       .{" "}
-      <a
-        className="text-base"
-        onClick={() => {
-          setIsChangeServerHostVisible(true);
-        }}
-      >
-        Change server
-      </a>
+      {allowChangeServer && (
+        <a
+          className="text-base"
+          onClick={() => {
+            setIsChangeServerHostVisible(true);
+          }}
+        >
+          Change server
+        </a>
+      )}
     </p>
   );
 }
@@ -109,6 +111,7 @@ function StartMenu({
       <UsingServerNotice
         serverHost={serverHost}
         setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+        allowChangeServer={true}
       />
     </div>
   );
