@@ -4,8 +4,11 @@ import seikanOnlyLogo from "./assets/seikan-only.svg";
 import seikanTextLogo from "./assets/seikan-text.svg";
 import "./App.css";
 import { io } from "socket.io-client";
+import { JSEncrypt } from "jsencrypt";
 
 const ACCPETED_VERSION = "1";
+
+const DEBUG = true;
 
 async function checkForSeikanServer(host: string) {
   try {
@@ -28,6 +31,18 @@ async function checkForSeikanServer(host: string) {
   } catch (e) {
     return false;
   }
+}
+
+function generateIdentifier(): string {
+  const array = new Uint32Array(12);
+  window.crypto.getRandomValues(array);
+  let resultString = "";
+
+  for (const num of array) {
+    resultString += num.toString(16).padStart(8, "0");
+  }
+
+  return resultString;
 }
 
 function Modal({
@@ -60,9 +75,11 @@ function Modal({
 function UsingServerNotice({
   serverHost,
   setIsChangeServerHostVisible,
+  allowChangeServer,
 }: {
   serverHost: string;
   setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  allowChangeServer?: boolean;
 }) {
   return (
     <p className="text-sm">
@@ -98,7 +115,7 @@ function StartMenu({
 }) {
   return (
     <div className="rounded-lg border-4 border-[#ffffff70] bg-[#ffffff30] h-9/10 aspect-1/1 p-10 flex flex-col items-center justify-center gap-4">
-      <img src={seikanLogo} alt="Seikan Logo" className="w-[500px] h-[auto]" />
+      <img src={seikanLogo} alt="Seikan Logo" className="w-3/4 h-[auto]" />
       <p>Bluntly simple file transfer.</p>
 
       <button
@@ -123,6 +140,8 @@ function WaitingMenuA({
   setSocket,
   tunnelId,
   setTunnelId,
+  privateKey,
+  setPrivateKey,
 }: {
   serverHost: string;
   setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -130,10 +149,16 @@ function WaitingMenuA({
   setSocket: React.Dispatch<React.SetStateAction<any>>;
   tunnelId: string;
   setTunnelId: React.Dispatch<React.SetStateAction<string>>;
+  privateKey: string;
+  setPrivateKey: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const linkRef = useRef<HTMLInputElement>(null);
 
+  const [hasBConnected, setHasBConnected] = useState(false);
+
   useEffect(() => {
+    let localPrivateKey = "";
+
     const socket = io(serverHost, {
       path: "/seikan-api/",
       reconnection: false,
@@ -142,15 +167,72 @@ function WaitingMenuA({
     setSocket(socket);
 
     socket.on("connect", () => {
-      console.log("Connected.");
+      if (DEBUG) console.log("A: Socket connected as A.");
+    });
+
+    socket.on("error", (data) => {
+      console.warn(`Error: ${data.message}`);
     });
 
     socket.on("tunnel-id", (data) => {
-      console.log(`Connected to tunnel with id ${data.tunnelId}`);
+      if (DEBUG) console.log(`A: Connected to tunnel with id ${data.tunnelId}`);
       setTunnelId(data.tunnelId);
     });
 
+    socket.on("req-A-publicKey", (callback) => {
+      // B joined tunnel, request a publicKey
+      // Generate a key pair
+
+      if (DEBUG) {
+        console.log(`A: Receieved request for a publicKey.`);
+      }
+
+      setHasBConnected(true);
+
+      const crypt = new JSEncrypt({ default_key_size: "1024" });
+      const privateKey = crypt.getPrivateKey();
+      const publicKey = crypt.getPublicKey();
+
+      setPrivateKey(privateKey);
+      localPrivateKey = privateKey;
+
+      if (DEBUG) {
+        console.log(`A: Public key is ${publicKey}.`);
+      }
+
+      callback({ publicKey: publicKey });
+    });
+
+    socket.on("B-identifier", (data) => {
+      // Received the encrypted identifier from B, and we need to decrypt it with our private key.
+      if (DEBUG) {
+        console.log(`A: Receieved encrypted identifier ${data.identifier}`);
+        console.log(`A: Private key is ${localPrivateKey}`);
+      }
+
+      const crypt = new JSEncrypt();
+      crypt.setPrivateKey(localPrivateKey);
+
+      const decryptedIdentifier = crypt.decrypt(data.identifier);
+
+      if (DEBUG)
+        console.log(`A: Decrypted identifier is ${decryptedIdentifier}`);
+
+      if (decryptedIdentifier && decryptedIdentifier.length == 96) {
+        // Valid identifier, we are now connected!
+        if (DEBUG)
+          console.log("A: Identifier is valid, waiting for verification.");
+      }
+    });
+
     socket.emit("new");
+
+    return () => {
+      if (DEBUG)
+        console.log("A: Disconnecting socket because component unmounted.");
+      socket.disconnect();
+      setSocket(null);
+    };
   }, []);
 
   function copyLink() {
@@ -170,33 +252,41 @@ function WaitingMenuA({
         <img
           src={seikanOnlyLogo}
           alt="Seikan Logo"
-          className="w-[100px] h-[auto]"
+          className="w-1/8 h-[auto]"
         />
 
         <img
           src={seikanTextLogo}
           alt="Seikan Logo"
-          className="w-[300px] h-[auto]"
+          className="w-1/2 h-[auto]"
         />
       </div>
-      <div className="flex pt-10 justify-center h-full flex-col gap-4 text-2xl">
-        <h1>Open this link on the other device.</h1>
-        <input
-          ref={linkRef}
-          type={"text"}
-          value={
-            tunnelId != undefined && tunnelId.length == 0
-              ? "Getting a link..."
-              : `http://${window.location.host}/?tunnel-id=${tunnelId}` +
-                (serverHost != document.location.host
-                  ? `&serverHost=${serverHost}`
-                  : "") // Only add server param if it's different from the current host
-          }
-          readOnly
-        />
-        <button onClick={copyLink}>Click here to copy link</button>
 
-        <p>Waiting for the other device...</p>
+      <div className="flex pt-10 justify-center h-full flex-col gap-4 text-2xl">
+        {!hasBConnected && (
+          <>
+            <h1>Open this link on the other device.</h1>
+            <input
+              ref={linkRef}
+              type={"text"}
+              value={
+                tunnelId != undefined && tunnelId.length == 0
+                  ? "Getting a link..."
+                  : `http://${window.location.host}/?tunnel-id=${tunnelId}` +
+                    (serverHost != document.location.host
+                      ? `&serverHost=${serverHost}`
+                      : "") // Only add server param if it's different from the current host
+              }
+              readOnly
+            />
+            <button onClick={copyLink}>Click here to copy link</button>
+
+            <p>Waiting for the other device...</p>
+          </>
+        )}
+
+        {hasBConnected && <h1>Establishing a secure connection...</h1>}
+
         <UsingServerNotice
           serverHost={serverHost}
           setIsChangeServerHostVisible={setIsChangeServerHostVisible}
@@ -209,23 +299,85 @@ function WaitingMenuA({
 function WaitingMenuB({
   serverHost,
   setIsChangeServerHostVisible,
+  setSocket,
+  tunnelId,
 }: {
   serverHost: string;
   setIsChangeServerHostVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  setSocket: React.Dispatch<React.SetStateAction<any>>;
+  tunnelId: string;
 }) {
+  useEffect(() => {
+    if (DEBUG) console.log(`B: Using server ${serverHost}`);
+
+    if (DEBUG) console.log("B: Attemping connection to " + tunnelId);
+
+    const socket = io(serverHost, {
+      path: "/seikan-api/",
+      reconnection: false,
+    });
+
+    setSocket(socket);
+
+    socket.on("connect", () => {
+      if (DEBUG) console.log("B: Socket connected.");
+    });
+
+    socket.on("error", (data) => {
+      console.warn(`Error: ${data.message}`);
+    });
+
+    socket.emit("B-req-join", {
+      tunnelId: tunnelId,
+    });
+
+    socket.on("req-B-identifier", (data, callback) => {
+      // Received the public key from A, and server requests a B-identifier.
+      if (DEBUG) console.log(`B: Receieved publicKey ${data.publicKey}`);
+
+      const identifier = generateIdentifier();
+
+      if (DEBUG)
+        console.log(
+          "B: Identifier is " +
+            identifier +
+            " and length is " +
+            identifier.length
+        );
+
+      const crypt = new JSEncrypt();
+
+      crypt.setPublicKey(data.publicKey);
+
+      const encryptedIdentifier = crypt.encrypt(identifier);
+
+      if (DEBUG)
+        console.log(`B: Encrypted identifier is ${encryptedIdentifier}`);
+
+      callback({ identifier: encryptedIdentifier }); // TODO: Implement a proper response for callback
+    });
+
+    return () => {
+      if (DEBUG)
+        console.log("B: Disconnecting socket because component unmounted.");
+      socket.disconnect();
+      setSocket(null);
+    };
+  }, []);
+
   return (
     <div className="rounded-lg border-4 border-[#ffffff70] bg-[#ffffff30] h-9/10 aspect-1/1 p-5 flex flex-col">
       <div className="flex justify-between items-center">
         <img
           src={seikanOnlyLogo}
           alt="Seikan Logo"
-          className="w-[100px] h-[auto]"
+          className="w-1/8 h-[auto]"
         />
 
         <img
           src={seikanTextLogo}
           alt="Seikan Logo"
-          className="w-[300px] h-[auto]"
+          className="w-1/2 h-[auto]"
         />
       </div>
       <div className="flex pt-10 justify-center h-full flex-col gap-4 text-2xl">
@@ -309,6 +461,7 @@ function App() {
   const [serverHost, setServerHost] = useState(window.location.host);
   const [socket, setSocket] = useState<any>(null);
   const [tunneId, setTunnelId] = useState<string>("");
+  const [privateKey, setPrivateKey] = useState<string>("");
 
   useEffect(() => {
     const automaticSetServerHost = async () => {
@@ -373,6 +526,8 @@ function App() {
             setSocket={setSocket}
             tunnelId={tunneId}
             setTunnelId={setTunnelId}
+            privateKey={privateKey}
+            setPrivateKey={setPrivateKey}
           />
         )}
 
@@ -380,6 +535,8 @@ function App() {
           <WaitingMenuB
             serverHost={serverHost}
             setIsChangeServerHostVisible={setIsChangeServerHostVisible}
+            setSocket={setSocket}
+            tunnelId={tunneId}
           />
         )}
 

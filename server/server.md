@@ -1,7 +1,7 @@
 # Connection Process
 
 1. A requests for a tunnel
-2. B connects to that tunnel
+2. B connects to that tunnel. Sends "connect" with data.tunnelId to connect to
 3. A sends a public key. B converts this key into an image, displayed to user.
 4. B uses this public key to encrypt an identifying string. A converts this key
    to an image, displayed to user.

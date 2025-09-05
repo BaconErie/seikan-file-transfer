@@ -1,6 +1,8 @@
 - Delete debug console prints
 - Make font Open Sans
 
+- Refactor s.t. the "new" event gets the tunnel-id thru callback, like with ack
+  response instead of an entirely new event
 - Seikan server allow port to change
 - Thru a settings.json
 - Instead of changing the server and always connected to `/seikan-api`, instead

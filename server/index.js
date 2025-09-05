@@ -92,11 +92,12 @@ io.on("connection", (socket) => {
     );
   });
 
-  socket.on("connect", async (data) => {
-    // Handle connection to an existing tunnel
+  socket.on("B-req-join", async (data) => {
+    // Handle request from B to join a tunnel started by A
 
     var tunnelId = data.tunnelId;
     if (!(tunnelId in waitingTunnels)) {
+      console.log(`Error: Invalid tunnel ID, got request for ${tunnelId}`);
       socket.emit("error", { message: "Invalid tunnel ID" });
       socket.disconnect(true);
     }
@@ -106,11 +107,19 @@ io.on("connection", (socket) => {
 
     delete waitingTunnels[tunnelId];
 
-    const readyResponse = await socket
-      .timeout(300000)
-      .emitWithAck("ready", {}, 10000);
+    console.log(
+      `DEBUG. Received request from B to join ${
+        data.tunnelId
+      }. Waiting tunnels now has length of ${
+        Object.keys(waitingTunnels).length
+      }`
+    );
 
-    if (readyResponse["privateKey"] == undefined) {
+    const aPublicKeyResponse = await A.timeout(300000).emitWithAck(
+      "req-A-publicKey"
+    );
+
+    if (aPublicKeyResponse["publicKey"] == undefined) {
       A.emit("error", {
         message: 'Initializer provided invalid response to "ready"',
       });
@@ -121,8 +130,8 @@ io.on("connection", (socket) => {
       B.disconnect(true);
     }
 
-    const bIdentifierResponse = await B.emitWithAck("private-key", {
-      privateKey: readyResponse.privateKey,
+    const bIdentifierResponse = await B.emitWithAck("req-B-identifier", {
+      publicKey: aPublicKeyResponse.publicKey,
     });
 
     if (bIdentifierResponse["identifier"] == undefined) {
@@ -136,7 +145,11 @@ io.on("connection", (socket) => {
       B.disconnect(true);
     }
 
-    A.emit("b-identifier", { identifier: bIdentifierResponse.identifier });
+    console.log(
+      `DEBUG. Received identifier ${bIdentifierResponse.identifier}.`
+    );
+
+    A.emit("B-identifier", { identifier: bIdentifierResponse.identifier });
 
     socketToTunnel[A] = [tunnelId, "A"];
     socketToTunnel[B] = [tunnelId, "B"];
